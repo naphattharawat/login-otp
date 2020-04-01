@@ -1,32 +1,105 @@
 import * as express from 'express';
 import { Router, Request, Response } from 'express';
 import { Jwt } from '../models/jwt';
-
+import { OtpModel } from '../models/otp';
+import * as moment from 'moment';
 import * as HttpStatus from 'http-status-codes';
+const uuidv4 = require('uuid/v4');
 
 const jwt = new Jwt();
 
 const router: Router = Router();
+const otpModel = new OtpModel();
 
 router.get('/', (req: Request, res: Response) => {
-  res.send({ ok: true, message: 'Welcome to RESTful api server!', code: HttpStatus.OK });
+  res.send({ ok: true, message: 'Welcome to OTP api login!', code: HttpStatus.OK });
 });
 
-router.get('/gen-token', async (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
+  const tel = req.body.tel;
+  const db = req.db;
+  const appId = req.body.appId;
+  var rndString = randomString(6).toUpperCase();
 
   try {
-    let payload = {
-      fullname: 'SATIT RIANPIT',
-      username: 'satit',
-      id: 1
-    }
+    if (tel) {
+      const key: any = await otpModel.getAppId(db, appId);
+      if (key.length) {
+        const rs: any = await otpModel.getUser(db, tel);
+        if (rs.length) {
+          // check before send otp
+          var currentDate = moment().format('x');
+          let otp = randomNumber();
+          var otpMessage = `รหัส OTP ของคุณคือ ${otp}`;
+          let rsOtp = await otpModel.sendOtp(+tel, otpMessage);
 
-    let token = jwt.signApiKey(payload);
-    res.send({ ok: true, token: token, code: HttpStatus.OK });
+          let sTel = `${tel.substr(0, 2)}XXXXX${tel.substr(-3)}`;
+
+          let createdAt = moment().format('x');
+          let expiredAt = moment().add(15, 'minute').format('x');
+
+          // save otp data
+          var id = uuidv4();
+          await otpModel.saveOtp(req.db, id, otp, rndString, tel, createdAt, expiredAt, 'activated');
+          res.send({ ok: true, ref_code: rndString, phone_number: sTel });
+        } else {
+          res.send({ ok: false, error: 'ไม่พบเบอร์โทรศัพท์' });
+        }
+      } else {
+        res.send({ ok: false, error: 'App ID ไม่ถูกต้อง' });
+      }
+
+    } else {
+      res.send({ ok: false, error: 'ไม่พบเบอร์โทรศัพท์' });
+    }
   } catch (error) {
-    res.send({ ok: false, error: error.message, code: HttpStatus.INTERNAL_SERVER_ERROR });
+    res.send({ ok: false, error: error.message });
   }
 
 });
 
+router.post('/verify', async (req: Request, res: Response) => {
+  const refCode = req.body.refCode;
+  const otp = req.body.otp;
+
+  try {
+    if (otp && refCode) {
+      var rs: any = await otpModel.getVerifyOtp(req.db, otp, refCode);
+      if (rs.length) {
+        var currentTime = moment().format('x');
+        if (rs[0].expired_at < currentTime) {
+          res.send({ ok: false, error: 'รหัส OTP หมดอายุ' });
+        } else {
+          // update inuse
+          await otpModel.updateInUseOtp(req.db, otp);
+          res.send({ ok: true });
+        }
+      }
+      else {
+        res.send({ ok: false, error: 'รหัส OTP ไม่ถูกต้อง' });
+      }
+    }
+    else {
+      res.send({ ok: false, error: 'ไม่พบรหัส OTP และ รหัสอ้างอิง' });
+    }
+  } catch (error) {
+    console.log(error);
+    res.send({ ok: false, error: 'เกิดข้อผิดพลาด' });
+  }
+});
+
+function randomString(digitLength: number) {
+  var _digitLength = digitLength || 10;
+  var strRandom = '';
+  var random = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  for (var i = 0; i < _digitLength; i++) { strRandom += random.charAt(Math.floor(Math.random() * random.length)); }
+  return strRandom;
+}
+
+function randomNumber() {
+  var strRandom = '';
+  var random = '0123456789';
+  for (var i = 0; i < 6; i++) { strRandom += random.charAt(Math.floor(Math.random() * random.length)); }
+  return strRandom;
+}
 export default router;
