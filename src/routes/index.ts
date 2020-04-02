@@ -30,7 +30,7 @@ router.post('/', async (req: Request, res: Response) => {
           // check before send otp
           var currentDate = moment().format('x');
           let otp = randomNumber();
-          var otpMessage = `รหัส OTP ของคุณคือ ${otp}`;
+          var otpMessage = `รหัส OTP ของคุณคือ ${otp} , รหัสมีอายุ 5 นาที`;
           let rsOtp = await otpModel.sendOtp(+tel, otpMessage);
 
           let sTel = `${tel.substr(0, 2)}XXXXX${tel.substr(-3)}`;
@@ -86,6 +86,86 @@ router.post('/verify', async (req: Request, res: Response) => {
     console.log(error);
     res.send({ ok: false, error: 'เกิดข้อผิดพลาด' });
   }
+});
+
+router.post('/ais', async (req: Request, res: Response) => {
+  const db = req.db;
+  const tel = req.body.tel;
+  const appId = req.body.appId;
+  try {
+    if (tel) {
+      const key: any = await otpModel.getAppId(db, appId);
+      if (key.length) {
+        const token: any = await otpModel.getTokenAIS();
+        if (JSON.parse(token).resultCode == 20000) {
+          const _token = JSON.parse(token).accessToken;
+          const templateCode: any = key[0].template_code;
+          const rs: any = await otpModel.getUser(db, tel);
+          if (rs.length) {
+            // check before send otp
+            const _tel = `66${+tel}`;
+            let rsOtp: any = await otpModel.sendOtpAIS(_token, _tel, templateCode);
+            const _rsOtp = JSON.parse(rsOtp);
+            console.log('rsOtp', _rsOtp);
+            res.send({ ok: true, ref_code: _rsOtp.referenceNumber, transactionID: _rsOtp.transactionID, phone_number: tel });
+          } else {
+            res.send({ ok: false, error: 'ไม่พบเบอร์โทรศัพท์' });
+          }
+        } else {
+          res.send({ ok: false, error: 'Token ไม่ถูกต้อง' });
+        }
+      } else {
+        res.send({ ok: false, error: 'App ID ไม่ถูกต้อง' });
+      }
+
+    } else {
+      res.send({ ok: false, error: 'ไม่พบเบอร์โทรศัพท์' });
+    }
+  } catch (error) {
+    res.send({ ok: false, error: error.message });
+  }
+
+});
+
+router.post('/ais/verify', async (req: Request, res: Response) => {
+  const db = req.db;
+  const tel = req.body.tel;
+  const otp = req.body.otp;
+  const transactionID = req.body.transactionID;
+  const appId = req.body.appId;
+  try {
+    if (tel) {
+      const key: any = await otpModel.getAppId(db, appId);
+      if (key.length) {
+        const token: any = await otpModel.getTokenAIS();
+        if (JSON.parse(token).resultCode == 20000) {
+          const _token = JSON.parse(token).accessToken;
+          const templateCode: any = key[0].template_code;
+          const _tel = `66${+tel}`;
+          console.log(_token, _tel, templateCode, otp, transactionID);
+
+          let rsOtp: any = await otpModel.verifyOtpAIS(_token, _tel, templateCode, otp, transactionID);
+          const _rsOtp = JSON.parse(rsOtp);
+          console.log('rsOtp', _rsOtp);
+          if (_rsOtp.resultCode == 20000) {
+            res.send({ ok: true, message: 'Success' });
+          } else {
+            res.send({ ok: false, error: 'OTP ไม่ถูกต้อง' });
+          }
+        } else {
+          res.send({ ok: false, error: 'Token ไม่ถูกต้อง' });
+        }
+      } else {
+        res.send({ ok: false, error: 'App ID ไม่ถูกต้อง' });
+      }
+
+    } else {
+      res.send({ ok: false, error: 'ไม่พบ OTP' });
+    }
+  } catch (error) {
+    res.send({ ok: false, error: error.message });
+  }
+
 });
 
 function randomString(digitLength: number) {

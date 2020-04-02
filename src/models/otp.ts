@@ -71,4 +71,75 @@ export class OtpModel {
       .where('username', tel)
   }
 
+  getTokenAIS() {
+    var clientId = process.env.OTP_CLIENT_ID;
+    var clientSecret = process.env.OTP_CLIENT_SECRET;
+    var code = process.env.OTP_CODE;
+
+    return new Promise((resolve: any, reject: any) => {
+      var options = {
+        method: 'GET',
+        url: `https://apisgl.ais.co.th/auth/v3/oauth/token?client_id=${clientId}&client_secret=${clientSecret}&grant_type=jwt_bearer&code=${code}`,
+      };
+
+      request(options, function (error, response, body) {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(body);
+        }
+      });
+    });
+  }
+
+  sendOtpAIS(token, tel, template) {
+    return new Promise((resolve: any, reject: any) => {
+      var options = {
+        method: 'POST',
+        url: 'https://apisgl.ais.co.th/api/v3/gsso/otp/send',
+        headers:
+        {
+          'Content-Type': 'application/json',
+          'X-Tid': 'WR20200401221756168',
+          'X-Requester': 'LOGIN',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ "msisdn": tel, "service": template })
+      };
+
+      request(options, function (error, response, body) {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(body);
+        }
+      });
+    });
+  }
+
+  verifyOtpAIS(token, tel, template, otp, transactionID) {
+    return new Promise((resolve: any, reject: any) => {
+      var options = {
+        method: 'POST',
+        url: 'https://apisgl.ais.co.th/api/v3/gsso/otp/confirm',
+        headers:
+        {
+          'Content-Type': 'application/json',
+          'X-Tid': 'WR20200401221756168',
+          'X-Requester': 'LOGIN',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ "msisdn": tel, "service": template, "pwd": otp, "transactionID": transactionID })
+      };
+
+      request(options, function (error, response, body) {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(body);
+        }
+      });
+    });
+  }
+
 }

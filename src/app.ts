@@ -47,7 +47,7 @@ let connection: MySqlConnectionConfig = {
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   multipleStatements: true,
-  debug: true
+  debug: false
 }
 
 let db = Knex({
