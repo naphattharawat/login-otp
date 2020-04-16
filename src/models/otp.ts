@@ -4,10 +4,10 @@ export class OtpModel {
 
 
 
-  sendOtp(tel: any, mess: any) {
+  sendOtp(tel: any, mess: any, providerName = process.env.SMS_PROVIDER_NAME) {
     var username = process.env.SMS_USERNAME;
     var password = process.env.SMS_PASSWORD;
-    var providerName = process.env.SMS_PROVIDER_NAME;
+    // var providerName = process.env.SMS_PROVIDER_NAME;
 
     return new Promise((resolve: any, reject: any) => {
       var options = {

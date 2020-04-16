@@ -31,7 +31,7 @@ router.post('/', async (req: Request, res: Response) => {
           var currentDate = moment().format('x');
           let otp = randomNumber();
           var otpMessage = `รหัส OTP ของคุณคือ ${otp} , รหัสมีอายุ 5 นาที`;
-          let rsOtp = await otpModel.sendOtp(+tel, otpMessage);
+          let rsOtp = await otpModel.sendOtp(+tel, otpMessage,'Co-ward OTP');
 
           let sTel = `${tel.substr(0, 2)}XXXXX${tel.substr(-3)}`;
 
