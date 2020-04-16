@@ -58,6 +58,44 @@ router.post('/', async (req: Request, res: Response) => {
 
 });
 
+router.post('/register', async (req: Request, res: Response) => {
+  const tel = req.body.tel;
+  const db = req.db;
+  const appId = req.body.appId;
+  var rndString = randomString(6).toUpperCase();
+
+  try {
+    if (tel) {
+      const key: any = await otpModel.getAppId(db, appId);
+      if (key.length) {
+        // check before send otp
+        var currentDate = moment().format('x');
+        let otp = randomNumber();
+        var otpMessage = `รหัส OTP ของคุณคือ ${otp} , รหัสมีอายุ 5 นาที`;
+        let rsOtp = await otpModel.sendOtp(+tel, otpMessage);
+
+        let sTel = `${tel.substr(0, 2)}XXXXX${tel.substr(-3)}`;
+
+        let createdAt = moment().format('x');
+        let expiredAt = moment().add(15, 'minute').format('x');
+
+        // save otp data
+        var id = uuidv4();
+        await otpModel.saveOtp(req.db, id, otp, rndString, tel, createdAt, expiredAt, 'activated');
+        res.send({ ok: true, ref_code: rndString, phone_number: sTel });
+      } else {
+        res.send({ ok: false, error: 'App ID ไม่ถูกต้อง' });
+      }
+
+    } else {
+      res.send({ ok: false, error: 'ไม่พบเบอร์โทรศัพท์' });
+    }
+  } catch (error) {
+    res.send({ ok: false, error: error.message });
+  }
+
+});
+
 router.post('/verify', async (req: Request, res: Response) => {
   const refCode = req.body.refCode;
   const otp = req.body.otp;
