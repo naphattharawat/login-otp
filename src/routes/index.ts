@@ -72,7 +72,7 @@ router.post('/register', async (req: Request, res: Response) => {
         var currentDate = moment().format('x');
         let otp = randomNumber();
         var otpMessage = `รหัส OTP ของคุณคือ ${otp} , ref:${rndString}, รหัสมีอายุ 5 นาที`;
-          let rsOtp = await otpModel.sendOtp(+tel, otpMessage,'Co-ward OTP');
+        let rsOtp = await otpModel.sendOtp(+tel, otpMessage, 'Co-ward OTP');
         let sTel = `${tel.substr(0, 2)}XXXXX${tel.substr(-3)}`;
 
         let createdAt = moment().format('x');
@@ -205,6 +205,39 @@ router.post('/ais/verify', async (req: Request, res: Response) => {
 
 });
 
+router.post('/ais/otp', async (req: Request, res: Response) => {
+  const db = req.db;
+  const tel = req.body.tel;
+  const appId = req.body.appId;
+  try {
+    if (tel) {
+      const key: any = await otpModel.getAppId(db, appId);
+      if (key.length) {
+        const token: any = await otpModel.getTokenAIS();
+        if (JSON.parse(token).resultCode == 20000) {
+          const _token = JSON.parse(token).accessToken;
+          const templateCode: any = key[0].template_code;
+          // check before send otp
+          const _tel = `66${+tel}`;
+          let rsOtp: any = await otpModel.sendOtpAIS(_token, _tel, templateCode);
+          const _rsOtp = JSON.parse(rsOtp);
+          res.send({ ok: true, ref_code: _rsOtp.referenceNumber, transactionID: _rsOtp.transactionID, phone_number: tel });
+
+        } else {
+          res.send({ ok: false, error: 'Token ไม่ถูกต้อง' });
+        }
+      } else {
+        res.send({ ok: false, error: 'App ID ไม่ถูกต้อง' });
+      }
+
+    } else {
+      res.send({ ok: false, error: 'ไม่พบเบอร์โทรศัพท์' });
+    }
+  } catch (error) {
+    res.send({ ok: false, error: error.message });
+  }
+
+});
 function randomString(digitLength: number) {
   var _digitLength = digitLength || 10;
   var strRandom = '';
