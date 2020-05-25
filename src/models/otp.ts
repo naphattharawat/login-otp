@@ -117,6 +117,38 @@ export class OtpModel {
     });
   }
 
+  // {
+  //   "receiver":"66909610157",
+  // "sender":"CO-ward",
+  //   "code":"93523800001",
+  //   "ctype":"UTF-8",
+  //   "content":"ทดสอบ ทดสอบ"
+  // }
+  sendSMS(token, tel, sender, code, text) {
+    return new Promise((resolve: any, reject: any) => {
+      var options = {
+        method: 'POST',
+        url: 'https://apisgl.ais.co.th/api/v3/bdg/sms',
+        headers:
+        {
+          'Content-Type': 'application/json',
+          'X-Tid': 'WR20200401221756168',
+          'X-Requester': 'LOGIN',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ "receiver": tel, "sender": sender, "code": code, "ctype": "UTF-8", "content": text })
+      };
+
+      request(options, function (error, response, body) {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(body);
+        }
+      });
+    });
+  }
+
   verifyOtpAIS(token, tel, template, otp, transactionID) {
     return new Promise((resolve: any, reject: any) => {
       var options = {

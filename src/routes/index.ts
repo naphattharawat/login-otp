@@ -205,6 +205,7 @@ router.post('/ais/verify', async (req: Request, res: Response) => {
 
 });
 
+// ไม่เช็ค users
 router.post('/ais/otp', async (req: Request, res: Response) => {
   const db = req.db;
   const tel = req.body.tel;
@@ -238,6 +239,45 @@ router.post('/ais/otp', async (req: Request, res: Response) => {
   }
 
 });
+
+router.post('/ais/sms', async (req: Request, res: Response) => {
+  const db = req.db;
+  const tel = req.body.tel;
+  const appId = req.body.appId;
+  const text = req.body.text;
+  try {
+    if (tel) {
+      const key: any = await otpModel.getAppId(db, appId);
+      if (key.length) {
+        const token: any = await otpModel.getTokenAIS();
+        if (JSON.parse(token).resultCode == 20000) {
+          const _token = JSON.parse(token).accessToken;
+          const code: any = key[0].template_code;
+          const sender: any = key[0].app_name;
+          // check before send otp
+          const _tel = `66${+tel}`;
+
+          let rsOtp: any = await otpModel.sendSMS(_token, _tel, sender, code, text);
+          const _rsOtp = JSON.parse(rsOtp);
+          console.log(_rsOtp);
+          res.send({ ok: true, smid: _rsOtp.SMID, phone_number: tel });
+
+        } else {
+          res.send({ ok: false, error: 'Token ไม่ถูกต้อง' });
+        }
+      } else {
+        res.send({ ok: false, error: 'App ID ไม่ถูกต้อง' });
+      }
+
+    } else {
+      res.send({ ok: false, error: 'ไม่พบเบอร์โทรศัพท์' });
+    }
+  } catch (error) {
+    res.send({ ok: false, error: error.message });
+  }
+
+});
+
 function randomString(digitLength: number) {
   var _digitLength = digitLength || 10;
   var strRandom = '';
