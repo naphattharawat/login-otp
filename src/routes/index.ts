@@ -185,21 +185,27 @@ router.post('/ais/verify', async (req: Request, res: Response) => {
           const _rsOtp = JSON.parse(rsOtp);
           console.log('rsOtp', _rsOtp);
           if (_rsOtp.resultCode == 20000) {
+            await otpModel.saveLog(db,appId,tel,'{error:"Success"}');
             res.send({ ok: true, message: 'Success' });
           } else {
+            await otpModel.saveLog(db,appId,tel,'{error:"OTP ไม่ถูกต้อง"}');
             res.send({ ok: false, error: 'OTP ไม่ถูกต้อง' });
           }
         } else {
+          await otpModel.saveLog(db,appId,tel,'{error:"Token ไม่ถูกต้อง"}');
           res.send({ ok: false, error: 'Token ไม่ถูกต้อง' });
         }
       } else {
+        await otpModel.saveLog(db,appId,tel,'{error:"App ID ไม่ถูกต้อง"}');
         res.send({ ok: false, error: 'App ID ไม่ถูกต้อง' });
       }
 
     } else {
+      await otpModel.saveLog(db,appId,tel,'{error:"ไม่พบ OTP"}');
       res.send({ ok: false, error: 'ไม่พบ OTP' });
     }
   } catch (error) {
+    await otpModel.saveLog(db,appId,tel,JSON.stringify(error));
     res.send({ ok: false, error: error.message });
   }
 
@@ -222,19 +228,24 @@ router.post('/ais/otp', async (req: Request, res: Response) => {
           const _tel = `66${+tel}`;
           let rsOtp: any = await otpModel.sendOtpAIS(_token, _tel, templateCode);
           const _rsOtp = JSON.parse(rsOtp);
+          await otpModel.saveLog(db,appId,tel,_rsOtp);
           res.send({ ok: true, ref_code: _rsOtp.referenceNumber, transactionID: _rsOtp.transactionID, phone_number: tel });
 
         } else {
+          await otpModel.saveLog(db,appId,tel,'{error:"Token ไม่ถูกต้อง"}');
           res.send({ ok: false, error: 'Token ไม่ถูกต้อง' });
         }
       } else {
+        await otpModel.saveLog(db,appId,tel,'{error:"App ID ไม่ถูกต้อง"}');
         res.send({ ok: false, error: 'App ID ไม่ถูกต้อง' });
       }
 
     } else {
+      await otpModel.saveLog(db,appId,tel,'{error:"ไม่พบเบอร์โทรศัพท์"}');
       res.send({ ok: false, error: 'ไม่พบเบอร์โทรศัพท์' });
     }
   } catch (error) {
+    await otpModel.saveLog(db,appId,tel,JSON.stringify(error));
     res.send({ ok: false, error: error.message });
   }
 
@@ -263,16 +274,20 @@ router.post('/ais/sms', async (req: Request, res: Response) => {
           res.send({ ok: true, smid: _rsOtp.SMID, phone_number: tel });
 
         } else {
+          await otpModel.saveLog(db,appId,tel,'{error:"Token ไม่ถูกต้อง"}');
           res.send({ ok: false, error: 'Token ไม่ถูกต้อง' });
         }
       } else {
+        await otpModel.saveLog(db,appId,tel,'{error:"App ID ไม่ถูกต้อง"}');
         res.send({ ok: false, error: 'App ID ไม่ถูกต้อง' });
       }
 
     } else {
+      await otpModel.saveLog(db,appId,tel,'{error:"ไม่พบเบอร์โทรศัพท์"}');
       res.send({ ok: false, error: 'ไม่พบเบอร์โทรศัพท์' });
     }
   } catch (error) {
+    await otpModel.saveLog(db,appId,tel,JSON.stringify(error));
     res.send({ ok: false, error: error.message });
   }
 

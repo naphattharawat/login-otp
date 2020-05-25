@@ -174,4 +174,13 @@ export class OtpModel {
     });
   }
 
+  saveLog(db: Knex, appId, tel, message) {
+    return db('logs')
+      .insert({
+        'app_id': appId || '',
+        'tel': tel || '',
+        'message': message || ''
+      })
+  }
+
 }
