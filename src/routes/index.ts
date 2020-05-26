@@ -270,7 +270,7 @@ router.post('/ais/sms', async (req: Request, res: Response) => {
 
           let rsOtp: any = await otpModel.sendSMS(_token, _tel, sender, code, text);
           const _rsOtp = JSON.parse(rsOtp);
-          console.log(_rsOtp);
+          await otpModel.saveLog(db,appId,tel,JSON.stringify(_rsOtp));
           res.send({ ok: true, smid: _rsOtp.SMID, phone_number: tel });
 
         } else {
