@@ -228,7 +228,7 @@ router.post('/ais/otp', async (req: Request, res: Response) => {
           const _tel = `66${+tel}`;
           let rsOtp: any = await otpModel.sendOtpAIS(_token, _tel, templateCode);
           const _rsOtp = JSON.parse(rsOtp);
-          await otpModel.saveLog(db,appId,tel,_rsOtp);
+          await otpModel.saveLog(db,appId,tel, JSON.stringify(_rsOtp));
           res.send({ ok: true, ref_code: _rsOtp.referenceNumber, transactionID: _rsOtp.transactionID, phone_number: tel });
 
         } else {
