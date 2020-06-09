@@ -41,18 +41,30 @@ router.post('/', async (req: Request, res: Response) => {
           // save otp data
           var id = uuidv4();
           await otpModel.saveOtp(req.db, id, otp, rndString, tel, createdAt, expiredAt, 'activated');
+          const obj = {
+            id,
+            otp,
+            rndString,
+            tel,
+            expiredAt
+          }
+          await otpModel.saveLog(db, appId, tel, JSON.stringify(obj));
           res.send({ ok: true, ref_code: rndString, phone_number: sTel });
         } else {
+           await otpModel.saveLog(db, appId, tel, '{error:"ไม่พบเบอร์โทรศัพท์"}');
           res.send({ ok: false, error: 'ไม่พบเบอร์โทรศัพท์' });
         }
       } else {
+         await otpModel.saveLog(db, appId, tel, '{error:"App ID ไม่ถูกต้อง"}');
         res.send({ ok: false, error: 'App ID ไม่ถูกต้อง' });
       }
 
     } else {
+       await otpModel.saveLog(db, appId, tel, '{error:"ไม่พบเบอร์โทรศัพท์"}');
       res.send({ ok: false, error: 'ไม่พบเบอร์โทรศัพท์' });
     }
   } catch (error) {
+     await otpModel.saveLog(db, appId, tel, JSON.stringify(error));
     res.send({ ok: false, error: error.message });
   }
 
@@ -81,46 +93,56 @@ router.post('/register', async (req: Request, res: Response) => {
         // save otp data
         var id = uuidv4();
         await otpModel.saveOtp(req.db, id, otp, rndString, tel, createdAt, expiredAt, 'activated');
+        await otpModel.saveLog(db, appId, tel, `{ref_code:${rndString},phone_number:${sTel}}`);
         res.send({ ok: true, ref_code: rndString, phone_number: sTel });
       } else {
+        await otpModel.saveLog(db, appId, tel, '{error:"App ID ไม่ถูกต้อง"}');
         res.send({ ok: false, error: 'App ID ไม่ถูกต้อง' });
       }
 
     } else {
+      await otpModel.saveLog(db, appId, tel, '{error:"ไม่พบเบอร์โทรศัพท์"}');
       res.send({ ok: false, error: 'ไม่พบเบอร์โทรศัพท์' });
     }
   } catch (error) {
+    await otpModel.saveLog(db, appId, tel, JSON.stringify(error));
     res.send({ ok: false, error: error.message });
   }
 
 });
 
 router.post('/verify', async (req: Request, res: Response) => {
+  const db =req.db;
   const refCode = req.body.refCode;
+  const tel = req.body.tel;
   const otp = req.body.otp;
-
+  const appId = req.body.appId;
   try {
     if (otp && refCode) {
-      var rs: any = await otpModel.getVerifyOtp(req.db, otp, refCode);
+      var rs: any = await otpModel.getVerifyOtp(db, otp, refCode);
       if (rs.length) {
         var currentTime = moment().format('x');
         if (rs[0].expired_at < currentTime) {
+          await otpModel.saveLog(db, appId, tel, '{error:"รหัส OTP หมดอายุ"}');
           res.send({ ok: false, error: 'รหัส OTP หมดอายุ' });
         } else {
           // update inuse
-          await otpModel.updateInUseOtp(req.db, otp);
+          await otpModel.updateInUseOtp(db, otp);
+          await otpModel.saveLog(db, appId, tel, '{message:"verify success"}');
           res.send({ ok: true });
         }
       }
       else {
+        await otpModel.saveLog(db, appId, tel, '{error:"รหัส OTP ไม่ถูกต้อง"}');
         res.send({ ok: false, error: 'รหัส OTP ไม่ถูกต้อง' });
       }
     }
     else {
+      await otpModel.saveLog(db, appId, tel, '{error:"ไม่พบรหัส OTP และ รหัสอ้างอิง"}');
       res.send({ ok: false, error: 'ไม่พบรหัส OTP และ รหัสอ้างอิง' });
     }
   } catch (error) {
-    console.log(error);
+    await otpModel.saveLog(db, appId, tel, JSON.stringify(error));
     res.send({ ok: false, error: 'เกิดข้อผิดพลาด' });
   }
 });
@@ -143,22 +165,27 @@ router.post('/ais', async (req: Request, res: Response) => {
             const _tel = `66${+tel}`;
             let rsOtp: any = await otpModel.sendOtpAIS(_token, _tel, templateCode);
             const _rsOtp = JSON.parse(rsOtp);
-            await otpModel.saveLog(db,appId,tel,'{message:"Request otp success"}');
+            await otpModel.saveLog(db, appId, tel, JSON.stringify(_rsOtp));
             res.send({ ok: true, ref_code: _rsOtp.referenceNumber, transactionID: _rsOtp.transactionID, phone_number: tel });
           } else {
+            await otpModel.saveLog(db, appId, tel, '{error:"ไม่พบเบอร์โทรศัพท์"}');
             res.send({ ok: false, error: 'ไม่พบเบอร์โทรศัพท์' });
           }
         } else {
+          await otpModel.saveLog(db, appId, tel, '{error:"Token ไม่ถูกต้อง"}');
           res.send({ ok: false, error: 'Token ไม่ถูกต้อง' });
         }
       } else {
+        await otpModel.saveLog(db, appId, tel, '{error:"App ID ไม่ถูกต้อง"}');
         res.send({ ok: false, error: 'App ID ไม่ถูกต้อง' });
       }
 
     } else {
+      await otpModel.saveLog(db, appId, tel, '{error:"ไม่พบเบอร์โทรศัพท์}');
       res.send({ ok: false, error: 'ไม่พบเบอร์โทรศัพท์' });
     }
   } catch (error) {
+    await otpModel.saveLog(db, appId, tel, JSON.stringify(error));
     res.send({ ok: false, error: error.message });
   }
 
@@ -172,9 +199,9 @@ router.post('/ais/verify', async (req: Request, res: Response) => {
   const appId = req.body.appId;
   try {
     if (tel) {
-      if(tel == '0909610157'){
-        await otpModel.saveLog(db,appId,tel,'{message:"SuccessAdmin"}');
-              res.send({ ok: true, message: 'Success' });
+      if (tel == '0909610157') {
+        await otpModel.saveLog(db, appId, tel, '{message:"SuccessAdmin"}');
+        res.send({ ok: true, message: 'Success' });
       } else {
         const key: any = await otpModel.getAppId(db, appId);
         if (key.length) {
@@ -184,32 +211,31 @@ router.post('/ais/verify', async (req: Request, res: Response) => {
             const templateCode: any = key[0].template_code;
             const _tel = `66${+tel}`;
             console.log(_token, _tel, templateCode, otp, transactionID);
-  
+
             let rsOtp: any = await otpModel.verifyOtpAIS(_token, _tel, templateCode, otp, transactionID);
             const _rsOtp = JSON.parse(rsOtp);
-            console.log('rsOtp', _rsOtp);
             if (_rsOtp.resultCode == 20000) {
-              await otpModel.saveLog(db,appId,tel,'{message:"Verify Success"}');
+              await otpModel.saveLog(db, appId, tel, JSON.stringify(_rsOtp));
               res.send({ ok: true, message: 'Success' });
             } else {
-              await otpModel.saveLog(db,appId,tel,'{error:"OTP ไม่ถูกต้อง"}');
+              await otpModel.saveLog(db, appId, tel, '{error:"OTP ไม่ถูกต้อง"}');
               res.send({ ok: false, error: 'OTP ไม่ถูกต้อง' });
             }
           } else {
-            await otpModel.saveLog(db,appId,tel,'{error:"Token ไม่ถูกต้อง"}');
+            await otpModel.saveLog(db, appId, tel, '{error:"Token ไม่ถูกต้อง"}');
             res.send({ ok: false, error: 'Token ไม่ถูกต้อง' });
           }
         } else {
-          await otpModel.saveLog(db,appId,tel,'{error:"App ID ไม่ถูกต้อง"}');
+          await otpModel.saveLog(db, appId, tel, '{error:"App ID ไม่ถูกต้อง"}');
           res.send({ ok: false, error: 'App ID ไม่ถูกต้อง' });
         }
       }
     } else {
-      await otpModel.saveLog(db,appId,tel,'{error:"ไม่พบเบอร์โทรศัพท์ หรือ OTP"}');
+      await otpModel.saveLog(db, appId, tel, '{error:"ไม่พบเบอร์โทรศัพท์ หรือ OTP"}');
       res.send({ ok: false, error: 'ไม่พบเบอร์โทรศัพท์ หรือ OTP' });
     }
   } catch (error) {
-    await otpModel.saveLog(db,appId,tel,JSON.stringify(error));
+    await otpModel.saveLog(db, appId, tel, JSON.stringify(error));
     res.send({ ok: false, error: error.message });
   }
 
@@ -232,24 +258,24 @@ router.post('/ais/otp', async (req: Request, res: Response) => {
           const _tel = `66${+tel}`;
           let rsOtp: any = await otpModel.sendOtpAIS(_token, _tel, templateCode);
           const _rsOtp = JSON.parse(rsOtp);
-          await otpModel.saveLog(db,appId,tel, JSON.stringify(_rsOtp));
+          await otpModel.saveLog(db, appId, tel, JSON.stringify(_rsOtp));
           res.send({ ok: true, ref_code: _rsOtp.referenceNumber, transactionID: _rsOtp.transactionID, phone_number: tel });
 
         } else {
-          await otpModel.saveLog(db,appId,tel,'{error:"Token ไม่ถูกต้อง"}');
+          await otpModel.saveLog(db, appId, tel, '{error:"Token ไม่ถูกต้อง"}');
           res.send({ ok: false, error: 'Token ไม่ถูกต้อง' });
         }
       } else {
-        await otpModel.saveLog(db,appId,tel,'{error:"App ID ไม่ถูกต้อง"}');
+        await otpModel.saveLog(db, appId, tel, '{error:"App ID ไม่ถูกต้อง"}');
         res.send({ ok: false, error: 'App ID ไม่ถูกต้อง' });
       }
 
     } else {
-      await otpModel.saveLog(db,appId,tel,'{error:"ไม่พบเบอร์โทรศัพท์"}');
+      await otpModel.saveLog(db, appId, tel, '{error:"ไม่พบเบอร์โทรศัพท์"}');
       res.send({ ok: false, error: 'ไม่พบเบอร์โทรศัพท์' });
     }
   } catch (error) {
-    await otpModel.saveLog(db,appId,tel,JSON.stringify(error));
+    await otpModel.saveLog(db, appId, tel, JSON.stringify(error));
     res.send({ ok: false, error: error.message });
   }
 
@@ -274,24 +300,24 @@ router.post('/ais/sms', async (req: Request, res: Response) => {
 
           let rsOtp: any = await otpModel.sendSMS(_token, _tel, sender, code, text);
           const _rsOtp = JSON.parse(rsOtp);
-          await otpModel.saveLog(db,appId,tel,JSON.stringify(_rsOtp));
+          await otpModel.saveLog(db, appId, tel, JSON.stringify(_rsOtp));
           res.send({ ok: true, smid: _rsOtp.SMID, phone_number: tel });
 
         } else {
-          await otpModel.saveLog(db,appId,tel,'{error:"Token ไม่ถูกต้อง"}');
+          await otpModel.saveLog(db, appId, tel, '{error:"Token ไม่ถูกต้อง"}');
           res.send({ ok: false, error: 'Token ไม่ถูกต้อง' });
         }
       } else {
-        await otpModel.saveLog(db,appId,tel,'{error:"App ID ไม่ถูกต้อง"}');
+        await otpModel.saveLog(db, appId, tel, '{error:"App ID ไม่ถูกต้อง"}');
         res.send({ ok: false, error: 'App ID ไม่ถูกต้อง' });
       }
 
     } else {
-      await otpModel.saveLog(db,appId,tel,'{error:"ไม่พบเบอร์โทรศัพท์"}');
+      await otpModel.saveLog(db, appId, tel, '{error:"ไม่พบเบอร์โทรศัพท์"}');
       res.send({ ok: false, error: 'ไม่พบเบอร์โทรศัพท์' });
     }
   } catch (error) {
-    await otpModel.saveLog(db,appId,tel,JSON.stringify(error));
+    await otpModel.saveLog(db, appId, tel, JSON.stringify(error));
     res.send({ ok: false, error: error.message });
   }
 
